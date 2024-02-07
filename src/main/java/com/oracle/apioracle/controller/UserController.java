@@ -1,6 +1,7 @@
 package com.oracle.apioracle.controller;
 
-import com.oracle.apioracle.repository.UserRepository;
+
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import com.oracle.apioracle.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,17 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import com.oracle.apioracle.entities.User;
 
-import java.util.Map;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
+import java.util.List;
+
 
 @RestController
-@RequestMapping("user")
+@RequestMapping("/user")
 @CrossOrigin(origins = "*")
 public class UserController {
 
     @Autowired
     UserService userService;
 
-    @PostMapping("new")
+    @PostMapping
     public ResponseEntity<?> save(@RequestBody User user) {
 
         try {
@@ -31,38 +34,44 @@ public class UserController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getByid(@PathVariable Long id){
-        User user = userService.getById(id);
-        if (user != null){
-            return new ResponseEntity<>(user,HttpStatus.OK);
-        } else {return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);}
+    @GetMapping("/registros")
+    public ResponseEntity<List<User>> getAllusers(){
+        List<User> curso = userService.getAllusers();
+        return new ResponseEntity<>(curso, HttpStatus.OK);
     }
 
-    @PatchMapping("update/{id}")
-    public ResponseEntity<?> parcialUpdateUser(@PathVariable Long id, @RequestBody Map<String, Object> updates){
+    @GetMapping("/registros/{id}")
+    public ResponseEntity<?> getByid(@PathVariable Long id) throws UserPrincipalNotFoundException {
         try{
-            userService.parcialUpdateId(id, (String)updates.get("name"), (Long) updates.get("age"));
-            return new ResponseEntity<>("exitosamente modificado", HttpStatus.OK);
-        } catch (Exception e){return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);}
+            User user = userService.getById(id);
+            return new ResponseEntity<>(user, HttpStatus.OK);
+        }catch (IllegalArgumentException e){return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }catch (UserPrincipalNotFoundException e){return new ResponseEntity<>(e.getMessage(),HttpStatus.NOT_FOUND);
+        }catch (Exception e){return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);}
+
     }
 
-    @PutMapping("desactive/{id}")
-    public ResponseEntity<?> desactivarUsuario(@PathVariable Long id, @RequestBody Map<String, Boolean> estadoupdate) {
+    @PatchMapping("/update/{id}")
+    public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody User partialUpdate){
         try {
-            boolean activo = estadoupdate.get("activo");
-            userService.desactivarById(id, activo);
-            if (activo) {
-                return new ResponseEntity<>("registro ya activado", HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>("registro desactivado", HttpStatus.OK);
-            }
-
+            User updateUser = userService.patchUpdate(id, partialUpdate);
+            return new ResponseEntity<>(updateUser, HttpStatus.OK);
+        } catch (UserPrincipalNotFoundException e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.NOT_FOUND);
         } catch (Exception e){
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-
+    }
+    @DeleteMapping("/softdelete/{id}")
+    public ResponseEntity<?> softdelete(@PathVariable Long id){
+        try{
+            User user = userService.softdelete(id);
+            return new ResponseEntity<>(user, HttpStatus.OK);
+        } catch (UserPrincipalNotFoundException e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
 }

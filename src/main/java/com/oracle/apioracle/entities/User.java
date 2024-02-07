@@ -28,5 +28,5 @@ public class User {
     private Long age;
 
     @Column(name="estado")
-    private boolean activo;
+    private Boolean estado;
 }
